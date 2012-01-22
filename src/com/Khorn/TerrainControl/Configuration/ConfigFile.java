@@ -1,6 +1,5 @@
 package com.Khorn.TerrainControl.Configuration;
 
-import net.minecraft.server.BiomeBase;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -303,6 +302,8 @@ public abstract class ConfigFile
 
     protected abstract void CorrectSettings();
 
+    protected abstract void RenameOldSettings();
+
     protected int CheckValue(int value, int min, int max)
     {
         if (value > max)
@@ -356,12 +357,8 @@ public abstract class ConfigFile
                 continue;
             }
 
-            for (int i = 0; i < WorldConfig.DefaultBiomesCount; i++)
-                if (BiomeBase.a[i].r.equals(key))
-                {
-                    output.add(key);
-                    break;
-                }
+            if(DefaultBiomes.Contain(key))
+                output.add(key);
 
         }
         return output;

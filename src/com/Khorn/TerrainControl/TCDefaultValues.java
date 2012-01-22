@@ -15,9 +15,9 @@ public enum TCDefaultValues
     CustomHeightControl("0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0"),
     CustomBiomes(""),
     NormalBiomes("Desert,Forest,Extreme Hills,Swampland,Plains,Taiga"),
-    IceBiomes("Ice Plains,Ice Mountains"),
-    IsleBiomes("MushroomIsland"),
-    BorderBiomes("MushroomIslandShore"),
+    IceBiomes("Ice Plains"),
+    IsleBiomes("MushroomIsland,Ice Mountains,DesertHills,ForestHills,TaigaHills,River"),
+    BorderBiomes("MushroomIslandShore,Beach,Extreme Hills Edge"),
 
     ModeTerrain("Normal"),
     ModeBiome("Normal"),
@@ -45,6 +45,7 @@ public enum TCDefaultValues
     BiomeRivers(true),
     IsleInBiome("Ocean"),
     BiomeIsBorder(""),
+    NotBorderNear(""),
 
     BiomeTemperature(0.5F),
     BiomeWetness(0.5F),
@@ -129,8 +130,7 @@ public enum TCDefaultValues
     CustomObjects(true),
     objectSpawnRatio(2),
     DenyObjectsUnderFill(false),
-    CustomTreeMinTime(60),
-    CustomTreeMaxTime(600),
+    customTreeChance(50),
 
 
     cactusDepositRarity(100),
