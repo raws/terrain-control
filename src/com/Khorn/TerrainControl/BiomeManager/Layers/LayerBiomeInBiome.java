@@ -1,12 +1,11 @@
 package com.Khorn.TerrainControl.BiomeManager.Layers;
 
 import com.Khorn.TerrainControl.BiomeManager.ArraysCache;
-import com.Khorn.TerrainControl.Configuration.LocalBiome;
-
+import net.minecraft.server.*;
 
 public class LayerBiomeInBiome extends Layer
 {
-    public LocalBiome biome;
+    public BiomeBase biome = BiomeBase.MUSHROOM_ISLAND;
     public int chance = 10;
     public boolean inOcean = false;
 
@@ -51,7 +50,7 @@ public class LayerBiomeInBiome extends Layer
 
                     if (((currentPiece & LandBit) == 0) && (i2 == 0) && (i3 == 0) && (i4 == 0) && (i5 == 0) && nextInt(chance) == 0)
                     {
-                        currentPiece = (currentPiece & IceBit) | (currentPiece & RiverBits) | LandBit | biome.getId() | IslandBit;
+                        currentPiece = (currentPiece & IceBit) | (currentPiece & RiverBits) | LandBit | biome.F | IslandBit;
                         spawn = true;
                     }
                 }
@@ -64,7 +63,7 @@ public class LayerBiomeInBiome extends Layer
 
 
                     if (BiomeIsles[(currentPiece & BiomeBits)] && BiomeIsles[i2] && BiomeIsles[i3] && BiomeIsles[i4] && BiomeIsles[i5] && nextInt(chance) == 0)
-                        currentPiece = (currentPiece & LandBit) | (currentPiece & IceBit) | (currentPiece & RiverBits) | biome.getId() | IslandBit;
+                        currentPiece = (currentPiece & LandBit) | (currentPiece & IceBit) | (currentPiece & RiverBits) | biome.F | IslandBit;
 
                 }
 

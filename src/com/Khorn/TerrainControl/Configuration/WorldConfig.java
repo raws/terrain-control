@@ -122,7 +122,8 @@ public class WorldConfig extends ConfigFile
     public boolean customObjects;
     public int objectSpawnRatio;
     public boolean denyObjectsUnderFill;
-    public int customTreeChance;
+    public int customTreeMinTime;
+    public int customTreeMaxTime;
 
     public boolean StrongholdsEnabled;
     public boolean MineshaftsEnabled;
@@ -147,7 +148,7 @@ public class WorldConfig extends ConfigFile
     public BiomeConfig[] biomeConfigs;
     public boolean BiomeConfigsHaveReplacement = false;
 
-    public static final int DefaultBiomesCount = 21;
+    public static final int DefaultBiomesCount = 16;
     public static int ExtendedBiomesCount = 0;
 
     public int normalBiomesRarity;
@@ -165,7 +166,6 @@ public class WorldConfig extends ConfigFile
         File settingsFile = new File(this.SettingsDir, TCDefaultValues.WorldSettingsName.stringValue());
 
         this.ReadSettingsFile(settingsFile);
-        this.RenameOldSettings();
         this.ReadConfigSettings();
 
         this.CorrectSettings();
@@ -192,28 +192,27 @@ public class WorldConfig extends ConfigFile
         {
             boolean isNew = true;
             for (int i = DefaultBiomesCount; i < DefaultBiomesCount + ExtendedBiomesCount; i++)
-                if (BiomeBase.a[i].w.equals(biomeName))
+                if (BiomeBase.a[i].r.equals(biomeName))
                     isNew = false;
             if (isNew)
                 new CustomBiome(DefaultBiomesCount + ExtendedBiomesCount++, biomeName);
         }
 
         for (int i = DefaultBiomesCount; i < DefaultBiomesCount + ExtendedBiomesCount; i++)
-            if (this.CustomBiomes.contains(BiomeBase.a[i].w))
+            if (this.CustomBiomes.contains(BiomeBase.a[i].r))
                 biomes.add(BiomeBase.a[i]);
 
 
         for (BiomeBase biome : biomes)
         {
-            BukkitBiome bukkitBiome = new BukkitBiome(biome);
-            BiomeConfig config = new BiomeConfig(BiomeFolder, bukkitBiome, this);
+            BiomeConfig config = new BiomeConfig(BiomeFolder, biome, this);
 
             if (this.NormalBiomes.contains(config.Name))
                 this.normalBiomesRarity += config.BiomeRarity;
             if (this.IceBiomes.contains(config.Name))
                 this.iceBiomesRarity += config.BiomeRarity;
 
-            this.biomeConfigs[biome.K] = config;
+            this.biomeConfigs[biome.F] = config;
             if (!this.BiomeConfigsHaveReplacement)
                 this.BiomeConfigsHaveReplacement = config.replaceBlocks.size() > 0;
 
@@ -223,16 +222,6 @@ public class WorldConfig extends ConfigFile
 
         this.RegisterBOBPlugins();
         this.plugin = plug;
-    }
-
-    protected  void RenameOldSettings()
-    {
-
-        if(this.SettingsCache.containsKey("WaterLevel"))
-        {
-            this.SettingsCache.put("WaterLevelMax".toLowerCase(),this.SettingsCache.get("WaterLevel"));
-        }
-
     }
 
     protected void CorrectSettings()
@@ -288,7 +277,8 @@ public class WorldConfig extends ConfigFile
         this.waterLevelMin = CheckValue(this.waterLevelMin, 0, 128);
         this.waterLevelMax = CheckValue(this.waterLevelMax, 0, 128, this.waterLevelMin);
 
-        this.customTreeChance = CheckValue(this.customTreeChance,0,100);
+        this.customTreeMinTime = (this.customTreeMinTime < 1 ? 1 : this.customTreeMinTime);
+        this.customTreeMaxTime = ((this.customTreeMaxTime - this.customTreeMinTime) < 1 ? (this.customTreeMinTime + 1) : this.customTreeMaxTime);
 
         if (this.ModeBiome == BiomeMode.OldGenerator && this.ModeTerrain != TerrainMode.OldGenerator)
         {
@@ -410,7 +400,8 @@ public class WorldConfig extends ConfigFile
         this.customObjects = this.ReadModSettings(TCDefaultValues.CustomObjects.name(), TCDefaultValues.CustomObjects.booleanValue());
         this.objectSpawnRatio = this.ReadModSettings(TCDefaultValues.objectSpawnRatio.name(), TCDefaultValues.objectSpawnRatio.intValue());
         this.denyObjectsUnderFill = this.ReadModSettings(TCDefaultValues.DenyObjectsUnderFill.name(), TCDefaultValues.DenyObjectsUnderFill.booleanValue());
-        this.customTreeChance = this.ReadModSettings(TCDefaultValues.customTreeChance.name(), TCDefaultValues.customTreeChance.intValue());
+        this.customTreeMinTime = this.ReadModSettings(TCDefaultValues.CustomTreeMinTime.name(), TCDefaultValues.CustomTreeMinTime.intValue());
+        this.customTreeMaxTime = this.ReadModSettings(TCDefaultValues.CustomTreeMaxTime.name(), TCDefaultValues.CustomTreeMaxTime.intValue());
 
         this.ReadHeightSettings();
         this.ReadCustomBiomes();
@@ -448,7 +439,7 @@ public class WorldConfig extends ConfigFile
         {
             boolean isUnique = true;
             for (int i = 0; i < DefaultBiomesCount; i++)
-                if (BiomeBase.a[i].w.equals(key))
+                if (BiomeBase.a[i].r.equals(key))
                     isUnique = false;
 
             if (isUnique && !this.CustomBiomes.contains(key))
@@ -654,9 +645,9 @@ public class WorldConfig extends ConfigFile
         WriteComment("Deny custom objects underFill even it enabled in objects ");
         this.WriteValue(TCDefaultValues.DenyObjectsUnderFill.name(), this.denyObjectsUnderFill);
         WriteNewLine();
-        WriteComment("Chance to grow custom instead normal tree from sapling .");
-        this.WriteValue(TCDefaultValues.customTreeChance.name(), this.customTreeChance);
-
+        WriteComment("Minimum and maximum time in seconds for growing custom tree from sapling./");
+        this.WriteValue(TCDefaultValues.CustomTreeMinTime.name(), Integer.valueOf(this.customTreeMinTime).intValue());
+        this.WriteValue(TCDefaultValues.CustomTreeMaxTime.name(), Integer.valueOf(this.customTreeMaxTime).intValue());
 
         WriteTitle("Cave Variables");
         WriteValue(TCDefaultValues.caveRarity.name(), this.caveRarity);
@@ -812,11 +803,11 @@ public class WorldConfig extends ConfigFile
         return (!this.disableBedrock) && ((!this.flatBedrock) || (y == 0));
     }
 
-    public LocalBiome GetBiomeByName(String name)
+    public BiomeBase GetBiomeByName(String name)
     {
         for (int i = 0; i < WorldConfig.DefaultBiomesCount + WorldConfig.ExtendedBiomesCount; i++)
-            if (BiomeBase.a[i].w.equals(name))
-                return new BukkitBiome(BiomeBase.a[i]);
+            if (BiomeBase.a[i].r.equals(name))
+                return BiomeBase.a[i];
         return null;
     }
 

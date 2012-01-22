@@ -191,7 +191,7 @@ public class BiomeManagerOld extends WorldChunkManager
 
         BiomeBase[] biomeArray = null;
 
-        biomeArray = this.getBiomes(biomeArray, i, j, n, i1);
+        biomeArray = this.a(biomeArray, i, j, n, i1);
         for (int i2 = 0; i2 < n * i1; i2++)
         {
             if (!paramList.contains(biomeArray[i2]))
@@ -215,7 +215,7 @@ public class BiomeManagerOld extends WorldChunkManager
         int i1 = m - j + 1;
         BiomeBase[] biomeArray = null;
 
-        biomeArray = this.getBiomes(biomeArray, i, j, n, i1);
+        biomeArray = this.a(biomeArray, i, j, n, i1);
         ChunkPosition localChunkPosition = null;
         int i2 = 0;
         for (int i3 = 0; i3 < biomeArray.length; i3++)

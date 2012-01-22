@@ -9,12 +9,15 @@ import com.Khorn.TerrainControl.Commands.TCCommandExecutor;
 import com.Khorn.TerrainControl.Configuration.WorldConfig;
 import com.Khorn.TerrainControl.Generator.ChunkProviderTC;
 import com.Khorn.TerrainControl.Generator.ChunkProviderTest;
-import net.minecraft.server.BiomeBase;
+import com.Khorn.TerrainControl.Listeners.TCBlockListener;
+import com.Khorn.TerrainControl.Listeners.TCPlayerListener;
+import com.Khorn.TerrainControl.Listeners.TCWorldListener;
 import org.bukkit.World;
 import org.bukkit.craftbukkit.CraftWorld;
-import org.bukkit.craftbukkit.block.CraftBlock;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event;
 import org.bukkit.generator.ChunkGenerator;
+import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
 
@@ -22,8 +25,9 @@ public class TCPlugin extends JavaPlugin
 {
 
     public final HashMap<String, WorldConfig> worldsSettings = new HashMap<String, WorldConfig>();
-
-    private TCListener listener;
+    private final TCBlockListener blockListener = new TCBlockListener(this);
+    private final TCWorldListener worldListener = new TCWorldListener(this);
+    private final TCPlayerListener playerListener = new TCPlayerListener(this);
     private final HashMap<String, TCPlayer> sessions = new HashMap<String, TCPlayer>();
 
 
@@ -36,10 +40,8 @@ public class TCPlugin extends JavaPlugin
     {
         BiomeManagerOld.GenBiomeDiagram();
 
-        if (this.getCommand("tc") != null)
-            this.getCommand("tc").setExecutor(new TCCommandExecutor(this));
-        this.getCommand("terraincontrol").setExecutor(new TCCommandExecutor(this));
-        this.listener = new TCListener(this);
+        this.getCommand("tc").setExecutor(new TCCommandExecutor(this));
+        this.RegisterEvents();
 
         System.out.println(getDescription().getFullName() + " is now enabled");
 
@@ -111,9 +113,6 @@ public class TCPlugin extends JavaPlugin
                 System.out.println("TerrainControl: cant create folder " + baseFolder.getName());
         }
 
-        // Get for init BiomeMapping
-        CraftBlock.biomeBaseToBiome(BiomeBase.OCEAN);
-
 
         WorldConfig worker = new WorldConfig(baseFolder, this, worldName);
 
@@ -138,10 +137,10 @@ public class TCPlugin extends JavaPlugin
             switch (worldSetting.ModeBiome)
             {
                 case Normal:
-                    workWorld.worldProvider.c = new BiomeManager(workWorld, worldSetting);
+                    workWorld.worldProvider.b = new BiomeManager(workWorld, worldSetting);
                     break;
                 case OldGenerator:
-                    workWorld.worldProvider.c = new BiomeManagerOld(workWorld, worldSetting);
+                    workWorld.worldProvider.b = new BiomeManagerOld(workWorld, worldSetting);
                     break;
                 case Default:
                     break;
@@ -178,6 +177,17 @@ public class TCPlugin extends JavaPlugin
         }
     }
 
+    private void RegisterEvents()
+    {
+        PluginManager pm = this.getServer().getPluginManager();
+        pm.registerEvent(Event.Type.BLOCK_PLACE, blockListener, Event.Priority.Monitor, this);
+
+        pm.registerEvent(Event.Type.WORLD_INIT, worldListener, Event.Priority.High, this);
+
+        pm.registerEvent(Event.Type.PLAYER_INTERACT, playerListener, Event.Priority.Normal, this);
+
+
+    }
 
 }
 //TODO Fix lighting

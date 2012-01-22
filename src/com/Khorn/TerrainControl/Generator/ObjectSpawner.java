@@ -114,7 +114,7 @@ public class ObjectSpawner extends BlockPopulator
         int z = chunk_z * 16;
 
         BiomeBase localBiomeBase = world.getWorldChunkManager().getBiome(x + 16, z + 16);
-        BiomeConfig localBiomeConfig = this.worldSettings.biomeConfigs[localBiomeBase.K];
+        BiomeConfig localBiomeConfig = this.worldSettings.biomeConfigs[localBiomeBase.F];
 
 
         this.rand.setSeed(world.getSeed());
@@ -184,31 +184,25 @@ public class ObjectSpawner extends BlockPopulator
 
         if (this.worldSettings.BiomeConfigsHaveReplacement)
         {
-            
-            net.minecraft.server.Chunk rawChunk = ((CraftChunk) chunk).getHandle();
-            byte[] blocks = rawChunk.b;
-            this.BiomeArray = this.world.getWorldChunkManager().getBiomeBlock(this.BiomeArray, chunk_x * 16, chunk_z * 16, 16, 16);
+            byte[] blocks = ((CraftChunk) chunk).getHandle().b;
+            this.BiomeArray = this.world.getWorldChunkManager().a(this.BiomeArray, chunk_x * 16, chunk_z * 16, 16, 16);
 
             for (int _x = 0; _x < 16; _x++)
                 for (int _z = 0; _z < 16; _z++)
                 {
-                    BiomeConfig biomeConfig = this.worldSettings.biomeConfigs[this.BiomeArray[(_x + _z * 16)].K];
+                    BiomeConfig biomeConfig = this.worldSettings.biomeConfigs[this.BiomeArray[(_z + _x * 16)].F];
                     if (biomeConfig.replaceBlocks.size() > 0)
                     {
                         for (int _y = 127; _y >= 0; _y--)
                         {
-                            int i = _x << 11 | _z << 7 | _y;
+                            int i = (_z * 16 + _x) * 128 + _y;
                             int blockId = blocks[i] & 0xFF;  // Fuck java with signed bytes;
                             int[] replacement = biomeConfig.ReplaceMatrixBlocks[blockId]; // [block ID, block data]
-							
-                            if (blockId != replacement[0] || (blockId == replacement[0] && rawChunk.g.a(_x,_y,_z) != replacement[1]))
-                                if (_y >= biomeConfig.ReplaceMatrixHeightMin[blockId] && _y <= biomeConfig.ReplaceMatrixHeightMax[blockId])
-                                {
-                                    blocks[i] = (byte) replacement[0];
-                                    rawChunk.g.a(_x,_y,_z,replacement[1]);
-                                    world.notify((x + _x), _y, (z + _z));
-                                }
-
+                            if (_y >= biomeConfig.ReplaceMatrixHeightMin[blockId] && _y <= biomeConfig.ReplaceMatrixHeightMax[blockId])
+                            {
+                            	world.setRawTypeIdAndData((x + _z), _y, (z + _x), replacement[0], replacement[1]);
+                            	world.notify((x + _x), _y, (z + _z));
+                            }
                         }
                     }
                 }
