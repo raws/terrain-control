@@ -1,16 +1,32 @@
 package com.Khorn.TerrainControl.Generator;
 
-import com.Khorn.TerrainControl.Configuration.BiomeConfig;
-import com.Khorn.TerrainControl.Configuration.Resource;
-import com.Khorn.TerrainControl.Configuration.WorldConfig;
-import com.Khorn.TerrainControl.CustomObjects.CustomObjectGen;
-import com.Khorn.TerrainControl.Generator.ResourceGens.*;
-import net.minecraft.server.*;
+import java.util.Random;
+
+import net.minecraft.server.BiomeBase;
+import net.minecraft.server.Block;
+import net.minecraft.server.SpawnerCreature;
+import net.minecraft.server.World;
+import net.minecraft.server.WorldGenLakes;
+
 import org.bukkit.Chunk;
 import org.bukkit.craftbukkit.CraftChunk;
 import org.bukkit.generator.BlockPopulator;
 
-import java.util.Random;
+import com.Khorn.TerrainControl.Configuration.BiomeConfig;
+import com.Khorn.TerrainControl.Configuration.Resource;
+import com.Khorn.TerrainControl.Configuration.WorldConfig;
+import com.Khorn.TerrainControl.CustomObjects.CustomObjectGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.AboveWaterGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.CactusGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.DungeonGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.GrassGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.LiquidGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.OreGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.PlantGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.ReedGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.TreeGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.UnderWaterOreGen;
+import com.Khorn.TerrainControl.Generator.ResourceGens.UndergroundLakeGen;
 
 public class ObjectSpawner extends BlockPopulator
 {
@@ -184,7 +200,8 @@ public class ObjectSpawner extends BlockPopulator
 
         if (this.worldSettings.BiomeConfigsHaveReplacement)
         {
-            byte[] blocks = ((CraftChunk) chunk).getHandle().b;
+        	net.minecraft.server.Chunk rawChunk = ((CraftChunk) chunk).getHandle();
+            byte[] blocks = rawChunk.b;
             this.BiomeArray = this.world.getWorldChunkManager().a(this.BiomeArray, chunk_x * 16, chunk_z * 16, 16, 16);
 
             for (int _x = 0; _x < 16; _x++)
@@ -198,10 +215,13 @@ public class ObjectSpawner extends BlockPopulator
                             int i = (_z * 16 + _x) * 128 + _y;
                             int blockId = blocks[i] & 0xFF;  // Fuck java with signed bytes;
                             int[] replacement = biomeConfig.ReplaceMatrixBlocks[blockId]; // [block ID, block data]
-                            if (_y >= biomeConfig.ReplaceMatrixHeightMin[blockId] && _y <= biomeConfig.ReplaceMatrixHeightMax[blockId])
-                            {
-                            	world.setRawTypeIdAndData((x + _z), _y, (z + _x), replacement[0], replacement[1]);
-                            	world.notify((x + _x), _y, (z + _z));
+                            if (blockId != replacement[0] || (blockId == replacement[0] && rawChunk.g.a(_x, _y, _z) != replacement[1])) {
+                            	if (_y >= biomeConfig.ReplaceMatrixHeightMin[blockId] && _y <= biomeConfig.ReplaceMatrixHeightMax[blockId])
+                                {
+                            		blocks[i] = (byte)replacement[0];
+                            		rawChunk.g.a(_x, _y, _z, replacement[1]);
+                            		world.notify((x + _x), _y, (z + _z));
+                                }
                             }
                         }
                     }
