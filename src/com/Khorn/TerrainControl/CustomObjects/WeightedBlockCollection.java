@@ -57,7 +57,7 @@ public class WeightedBlockCollection {
 	
 	public int[] next()
 	{
-		int value = random.nextInt(total + 1);
+		int value = random.nextInt(total) + 1;
 		return blocks.ceilingEntry(value).getValue();
 	}
 	
