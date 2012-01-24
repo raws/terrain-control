@@ -1,11 +1,15 @@
 package com.Khorn.TerrainControl.CustomObjects;
 
-import com.Khorn.TerrainControl.Configuration.WorldConfig;
-import net.minecraft.server.*;
-import org.bukkit.Chunk;
-
 import java.util.ArrayList;
 import java.util.Random;
+
+import net.minecraft.server.BiomeBase;
+import net.minecraft.server.Block;
+import net.minecraft.server.World;
+
+import org.bukkit.Chunk;
+
+import com.Khorn.TerrainControl.Configuration.WorldConfig;
 
 public class CustomObjectGen
 {
@@ -170,19 +174,19 @@ public class CustomObjectGen
 
         // 1)
 
-
         // 2)
 
         int index = 0;
         int branchLimit = 0;
         ArrayList<CustomObject> branchGroup = worldSettings.BranchGroups.get(workObject.groupId);
-        ArrayList<Coordinate> workingData = new ArrayList<Coordinate>();
+        
+        ArrayList<Coordinate> coordinates = new ArrayList<Coordinate>();
         while (index < workObject.Data.size())
         {
-            Coordinate DataPoint = workObject.Data.get(index);
-            workingData.add(DataPoint.GetCopy());
+            Coordinate coordinate = workObject.Data.get(index);
+            coordinates.add(coordinate.clone());
 
-            if ((DataPoint.branchDirection != -1) && (branchGroup != null) && (branchLimit < workObject.branchLimit))
+            if ((coordinate.branchDirection != -1) && (branchGroup != null) && (branchLimit < workObject.branchLimit))
             {
                 CustomObject workingBranch = branchGroup.get(rand.nextInt(branchGroup.size()));
                 int counter = 0;
@@ -190,13 +194,13 @@ public class CustomObjectGen
                 {
                     Coordinate untranslatedCoordinate = workingBranch.Data.get(counter).GetCopy();
                     int directionCounter = 0;
-                    while (directionCounter < (DataPoint.branchDirection))
+                    while (directionCounter < (coordinate.branchDirection))
                     {
                         untranslatedCoordinate.Rotate();
                         directionCounter++;
                     }
 
-                    workingData.add(untranslatedCoordinate.GetSumm(DataPoint));
+                    coordinates.add(untranslatedCoordinate.GetSumm(coordinate));
                     counter++;
                 }
 
@@ -215,10 +219,10 @@ public class CustomObjectGen
         }
 
 
-        while (index < workingData.size())
+        while (index < coordinates.size())
         {
             int counter = 0;
-            Coordinate point = workingData.get(index);
+            Coordinate point = coordinates.get(index);
             while (counter < RotationAmount)
             {
                 point.Rotate();
@@ -233,7 +237,7 @@ public class CustomObjectGen
                 if (world.getTypeId((x + point.getX()), (y + point.getY()), (z + point.getZ())) > 0)
                 {
                     faultCounter++;
-                    if (faultCounter > (workingData.size() * (workObject.collisionPercentage / 100)))
+                    if (faultCounter > (coordinates.size() * (workObject.collisionPercentage / 100)))
                     {
                         return false;
                     }
@@ -245,28 +249,26 @@ public class CustomObjectGen
         // 4)
 
         index = 0;
-        while (index < workingData.size())
+        while (index < coordinates.size())
         {
-            Coordinate DataPoint = workingData.get(index);
-            if (world.getTypeId(x + DataPoint.getX(), y + DataPoint.getY(), z + DataPoint.getZ()) == 0)
+            Coordinate coordinate = coordinates.get(index);
+            int[] block = coordinate.getBlockIdAndData();
+            if (block != null && (world.getTypeId(x + coordinate.getX(), y + coordinate.getY(), z + coordinate.getZ()) == 0 || coordinate.shouldDig()))
             {
-                ChangeWorld(world,notify, (x + DataPoint.getX()), y + DataPoint.getY(), z + DataPoint.getZ(), DataPoint.workingData, DataPoint.workingExtra);
-            } else if (DataPoint.Digs)
-            {
-                ChangeWorld(world,notify, (x + DataPoint.getX()), y + DataPoint.getY(), z + DataPoint.getZ(), DataPoint.workingData, DataPoint.workingExtra);
+            	ChangeWorld(world, notify, (x + coordinate.getX()), (y + coordinate.getY()), (z + coordinate.getZ()), block);
             }
-            if ((!worldSettings.denyObjectsUnderFill) && (workObject.underFill) && (world.getTypeId(x + DataPoint.getX(), y, z + DataPoint.getZ()) > 0))
+            if ((!worldSettings.denyObjectsUnderFill) && (workObject.underFill) && (world.getTypeId(x + coordinate.getX(), y, z + coordinate.getZ()) > 0))
             {
                 int depthScanner = 0;
                 int blockForFill = world.getTypeId(x, y - 1, z);
                 while (depthScanner < 64)
                 {
-                    if (DataPoint.getY() < depthScanner)
+                    if (coordinate.getY() < depthScanner)
                     {
                         int countdown = depthScanner;
-                        while ((world.getTypeId(x + DataPoint.getX(), y + DataPoint.getY() - countdown, z + DataPoint.getZ()) == 0) && (countdown < 64))
+                        while ((world.getTypeId(x + coordinate.getX(), y + coordinate.getY() - countdown, z + coordinate.getZ()) == 0) && (countdown < 64))
                         {
-                            ChangeWorld(world,notify, (x + DataPoint.getX()), y + DataPoint.getY() - countdown, z + DataPoint.getZ(), blockForFill, 0);
+                            ChangeWorld(world,notify, (x + coordinate.getX()), y + coordinate.getY() - countdown, z + coordinate.getZ(), blockForFill, 0);
                             countdown++;
                         }
                     }
@@ -289,6 +291,9 @@ public class CustomObjectGen
 
     }
 
-
+    private static boolean ChangeWorld(World world, boolean notify, int x, int y, int z, int[] block)
+    {
+    	return ChangeWorld(world, notify, x, y, z, block[0], block[1]);
+    }
 
 }

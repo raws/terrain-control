@@ -1,12 +1,13 @@
 package com.Khorn.TerrainControl.CustomObjects;
 
-import net.minecraft.server.BiomeBase;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Random;
+
+import net.minecraft.server.BiomeBase;
 
 public class CustomObject
 {
@@ -39,17 +40,19 @@ public class CustomObject
     public String name = "";
     public String version = "1";
     public boolean IsValid = false;
-
+    
+    /**
+     * A random number generator for this object's Coordinates to use
+     * during block selection.
+     */
+    private Random random = new Random();
 
     public CustomObject(File objectFile)
     {
-
-        try
+    	try
         {
-
-            BufferedReader ObjectProps = new BufferedReader(new FileReader(objectFile));
-
-            String workingString = ObjectProps.readLine();
+    		BufferedReader ObjectProps = new BufferedReader(new FileReader(objectFile));
+        	String workingString = ObjectProps.readLine();
             if (!workingString.equals("[META]"))
             {
                 System.out.println("Invalid BOB Plugin: " + objectFile.getName());
@@ -58,9 +61,10 @@ public class CustomObject
             }
 
             boolean dataReached = false;
+            short line = 1;
             while ((workingString = ObjectProps.readLine()) != null)
             {
-
+            	line++;
                 if (!dataReached)
                 {
                     if (workingString.contains("="))
@@ -219,21 +223,17 @@ public class CustomObject
                         dataReached = true;
                     continue;
                 }
-
-                String[] CoordinateSet = workingString.split(":")[0].split(",");
-                String BlockString = workingString.split(":")[1];
-                Coordinate Coordinates;
-                if (this.dig)
+                
+                try
                 {
-                    Coordinates = new Coordinate(Integer.parseInt(CoordinateSet[0]), Integer.parseInt(CoordinateSet[2]), Integer.parseInt(CoordinateSet[1]), BlockString, true);
-                } else
-                {
-                    Coordinates = new Coordinate(Integer.parseInt(CoordinateSet[0]), Integer.parseInt(CoordinateSet[2]), Integer.parseInt(CoordinateSet[1]), BlockString, false);
-
+                	Coordinate coordinate = new Coordinate(this, workingString);
+                	this.Data.add(coordinate);
                 }
-                Coordinates.RegisterData();
-                this.Data.add(Coordinates);
-
+                catch (MalformedCoordinateException e)
+                {
+                	ObjectProps.close();
+                	throw new MalformedCustomObjectException(objectFile.getName() + " contains a syntax error on line " + line + ": " + e.getLine(), objectFile, e);
+                }
             }
 
             if (!dataReached)
@@ -247,12 +247,12 @@ public class CustomObject
             this.CorrectSettings();
             this.IsValid = true;
 
-        } catch (Exception e)
+        }
+        catch (Exception e)
         {
             e.printStackTrace();
             System.out.println("Invalid BOB Plugin: " + objectFile.getName());
         }
-
     }
 
     public void CorrectSettings()
@@ -321,6 +321,10 @@ public class CustomObject
         return this.spawnInBiome.contains("all") || this.spawnInBiome.contains(localBiome.r.toLowerCase());
 
     }
-
+    
+    public Random getRandom()
+    {
+    	return random;
+    }
 
 }

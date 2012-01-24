@@ -1,28 +1,216 @@
 package com.Khorn.TerrainControl.CustomObjects;
 
-public class Coordinate
-{
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-    private int x;
-    private int y;
-    private int z;
+public class Coordinate {
+
+	/**
+     * Regular expression for matching data string lines. Match
+     * groups are as follows:
+     * 
+     * 1: Comma-delimited triplet of coordinates, in X,Z,Y order
+     * 2: Comma-delimited list of block IDs, block data, and
+     *    probabilities, e.g. "1(25),17.3,98(100)" (block data
+     *    and probabilities are optional)
+     * 3: Branch data pair, e.g. "0@50" (optional)
+     */
+    private static final Pattern dataPattern = Pattern.compile("^((?:-?\\d+,?){3}):((?:\\d+(?:\\.\\d+)?(?:\\(\\d+\\))?,?)+)(?:#(\\d+@\\d+))?$");
+    
+    /**
+     * Regular expression for matching block IDs, block data, and
+     * probabilities. Match groups are as follows:
+     * 
+     *  1: Block ID
+     *  2: Block data (optional)
+     *  3: Probability (optional)
+     */
+    private static final Pattern blockPattern = Pattern.compile("(\\d+)(?:\\.(\\d+))?(?:\\((\\d+)\\))?");
+	
+    /**
+     * The CustomObject this Coordinate belongs to.
+     */
+    private CustomObject object;
+    
+    /**
+     * The CustomObject-relative block coordinates represented by this Coordinate.
+     */
+    private int x, y, z;
+    
+    /**
+     * A collection of block IDs, block data, and probabilities for each block
+     * which may be placed at this Coordinate. Each element is an array of
+     * integers in the following order: [block ID, block data, probability]
+     * 
+     * Probability is an integer in the range 0 to 100 describing how likely
+     * this block ID and block data will be placed at this Coordinate's position.
+     * The probability is considered each time the object is spawned. If the
+     * object spawner reaches the end of the block list without choosing a
+     * block, no block will be placed.
+     */
+    private List<int[]> blocks = new ArrayList<int[]>();
+    
     public int workingData = 0;
     public int workingExtra = 0;
     private String dataString;
     private int branchOdds = -1;
     public int branchDirection = -1;
-    public boolean Digs;
-
+    public boolean dig;
+    
+    public Coordinate(CustomObject object, String line) throws MalformedCoordinateException
+    {
+    	Matcher matcher = dataPattern.matcher(line);
+    	if (matcher.matches() && matcher.group(1) != null && matcher.group(2) != null)
+    	{
+    		this.object = object;
+    		
+    		/**
+    		 * Coordinates
+    		 */
+    		String[] coordinates = matcher.group(1).split(",");
+    		this.x = Integer.valueOf(coordinates[0]);
+    		this.z = Integer.valueOf(coordinates[1]);
+    		this.y = Integer.valueOf(coordinates[2]);
+    		
+    		/**
+    		 * Block ID, data, and probability
+    		 */
+    		String[] blockLines = matcher.group(2).split(",");
+    		for (String blockLine : blockLines)
+    		{
+    			Matcher blockMatcher = blockPattern.matcher(blockLine);
+    			if (blockMatcher.matches() && blockMatcher.group(1) != null)
+    			{
+    				int[] block = { 0, 0, -1 };
+    				block[0] = Integer.valueOf(blockMatcher.group(1));
+    				
+    				if (blockMatcher.group(2) != null)
+    				{
+    					block[1] = Integer.valueOf(blockMatcher.group(2));
+    				}
+    				
+    				if (blockMatcher.group(3) != null)
+    				{
+    					block[2] = Integer.valueOf(blockMatcher.group(3));
+    				}
+    				
+    				getBlocks().add(block);
+    			}
+    			else
+    			{
+    				throw new MalformedCoordinateException(line);
+    			}
+    		}
+    		
+    		/**
+    		 * Special cases
+    		 * 
+    		 * If there's only one block set, and its probability is -1 (the default), we
+    		 * set its probability to 100 to ensure it is always placed.
+    		 * 
+    		 * Otherwise, if there are multiple blocks set, but all of their probabilities
+    		 * are -1 (the default), we split the probability equally so they each
+    		 * have a chance of being placed.
+    		 */
+    		if (getBlocks().size() == 1)
+    		{
+    			int[] block = getBlocks().get(0);
+    			if (block[2] < 0)
+    			{
+    				block[2] = 100;
+    			}
+    		}
+    		else if (getBlocks().size() > 1)
+    		{
+    			// Check to see if every block has no probability
+    			boolean hasProbability = false;
+    			for (int[] block : getBlocks())
+    			{
+    				if (block[2] > -1)
+    				{
+    					hasProbability = true;
+    				}
+    			}
+    			
+    			// If not, split probabilities equally
+    			if (!hasProbability)
+    			{
+    				int probability = 100 / getBlocks().size();
+    				for (int[] block : getBlocks())
+    				{
+    					block[2] = probability;
+    				}
+    			}
+    		}
+    		
+    		/**
+    		 * Branch direction and probability
+    		 */
+    		if (matcher.group(3) != null)
+    		{
+    			String[] branch = matcher.group(3).split("@");
+    			this.branchDirection = Integer.valueOf(branch[0]);
+    			this.branchOdds = Integer.valueOf(branch[1]);
+    		}
+    	}
+    	else
+    	{
+    		throw new MalformedCoordinateException(line);
+    	}
+    	
+    	/**
+    	 * Legacy support during refactor
+    	 * TODO Get rid of this
+    	 */
+    	int[] firstBlock = getBlocks().get(0);
+		this.workingData = firstBlock[0];
+		this.workingExtra = firstBlock[1];
+		this.dig = object.dig;
+    }
+    
+    public Coordinate(CustomObject object, int x, int y, int z, List<int[]> blocks, int branchDirection, int branchOdds)
+    {
+    	this.object = object;
+    	this.x = x;
+    	this.y = y;
+    	this.z = z;
+    	this.blocks = new ArrayList<int[]>(blocks);
+    	this.branchDirection = branchDirection;
+    	this.branchOdds = branchOdds;
+    	
+    	/**
+    	 * Legacy support during refactor
+    	 * TODO Get rid of this
+    	 */
+    	int[] firstBlock = getBlocks().get(0);
+    	this.workingData = firstBlock[0];
+    	this.workingExtra = firstBlock[1];
+    	this.dig = object.dig;
+    }
+    
+    public Coordinate(Coordinate coordinate)
+    {
+    	this(coordinate.getObject(), coordinate.getX(), coordinate.getY(), coordinate.getZ(), coordinate.getBlocks(), coordinate.branchDirection, coordinate.branchOdds);
+    }
+    
     public Coordinate(int initX, int initY, int initZ, String initData, boolean digs)
     {
         x = initX;
         y = initY;
         z = initZ;
         dataString = initData;
-        Digs = digs;
+        dig = digs;
     }
 
-    public int getX()
+    public CustomObject getObject()
+    {
+		return object;
+	}
+
+	public int getX()
     {
         return x;
     }
@@ -47,7 +235,50 @@ public class Coordinate
         return (_z + z) >> 4;
     }
 
-    public static int RotateData(int type, int data)
+    public List<int[]> getBlocks()
+    {
+		return blocks;
+	}
+    
+    public boolean shouldDig()
+    {
+    	return getObject().dig;
+    }
+    
+    public Random getRandom()
+    {
+    	return getObject().getRandom();
+    }
+    
+    /**
+     * Return a block ID and block data pair according to this
+     * Coordinate's block probabilities. This method may return
+     * null if no block is selected.
+     * 
+     * The int[2] returned contains elements in the following
+     * order: [block ID, block data]
+     * 
+     * @return an int[2] block ID and block data pair, or null
+     */
+    public int[] getBlockIdAndData()
+    {
+    	int[] data = null;
+    	
+    	for (int[] block : getBlocks())
+    	{
+    		if (getRandom().nextInt(101) <= block[2])
+    		{
+    			data = new int[2];
+    			data[0] = block[0];
+    			data[1] = block[1];
+    			break;
+    		}
+    	}
+    	
+    	return data;
+    }
+
+	public static int RotateData(int type, int data)
     {
 
         switch (type)
@@ -260,7 +491,7 @@ public class Coordinate
         x = z;
         z = (tempx * (-1));
     }
-
+    
     public void RegisterData()
     {
         String workingDataString = dataString;
@@ -302,13 +533,18 @@ public class Coordinate
 
     public Coordinate GetCopy()
     {
-        return this.GetCopy(x, y, z, dataString, Digs);
+        return this.GetCopy(x, y, z, dataString, dig);
 
+    }
+    
+    public Coordinate clone()
+    {
+    	return new Coordinate(this);
     }
 
     public Coordinate GetSumm(Coordinate workCoord)
     {
-        return this.GetCopy(x + workCoord.getX(), y + workCoord.getY(), z + workCoord.getZ(), dataString, Digs);
+        return this.GetCopy(x + workCoord.getX(), y + workCoord.getY(), z + workCoord.getZ(), dataString, dig);
 
     }
 }
