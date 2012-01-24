@@ -1,7 +1,5 @@
 package com.Khorn.TerrainControl.CustomObjects;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -51,7 +49,7 @@ public class Coordinate {
      * object spawner reaches the end of the block list without choosing a
      * block, no block will be placed.
      */
-    private List<int[]> blocks = new ArrayList<int[]>();
+    private WeightedBlockCollection blocks;
     
     public int workingData = 0;
     public int workingExtra = 0;
@@ -60,12 +58,13 @@ public class Coordinate {
     public int branchDirection = -1;
     public boolean dig;
     
-    public Coordinate(CustomObject object, String line) throws MalformedCoordinateException
+    public Coordinate(CustomObject object, String line) throws MalformedCoordinateException, EmptyCoordinateException
     {
     	Matcher matcher = dataPattern.matcher(line);
     	if (matcher.matches() && matcher.group(1) != null && matcher.group(2) != null)
     	{
     		this.object = object;
+    		this.blocks = new WeightedBlockCollection(getRandom());
     		
     		/**
     		 * Coordinates
@@ -84,7 +83,7 @@ public class Coordinate {
     			Matcher blockMatcher = blockPattern.matcher(blockLine);
     			if (blockMatcher.matches() && blockMatcher.group(1) != null)
     			{
-    				int[] block = { 0, 0, -1 };
+    				int[] block = { 0, 0 };
     				block[0] = Integer.valueOf(blockMatcher.group(1));
     				
     				if (blockMatcher.group(2) != null)
@@ -92,12 +91,13 @@ public class Coordinate {
     					block[1] = Integer.valueOf(blockMatcher.group(2));
     				}
     				
+    				int probability = 1;
     				if (blockMatcher.group(3) != null)
     				{
-    					block[2] = Integer.valueOf(blockMatcher.group(3));
+    					probability = Integer.valueOf(blockMatcher.group(3));
     				}
     				
-    				getBlocks().add(block);
+    				getBlocks().add(probability, block);
     			}
     			else
     			{
@@ -106,45 +106,10 @@ public class Coordinate {
     		}
     		
     		/**
-    		 * Special cases
-    		 * 
-    		 * If there's only one block set, and its probability is -1 (the default), we
-    		 * set its probability to 100 to ensure it is always placed.
-    		 * 
-    		 * Otherwise, if there are multiple blocks set, but all of their probabilities
-    		 * are -1 (the default), we split the probability equally so they each
-    		 * have a chance of being placed.
+    		 * If all probabilities were zero, then the weighted block collection
+    		 * will be empty, as it discards all zero-weighted entries.
     		 */
-    		if (getBlocks().size() == 1)
-    		{
-    			int[] block = getBlocks().get(0);
-    			if (block[2] < 0)
-    			{
-    				block[2] = 100;
-    			}
-    		}
-    		else if (getBlocks().size() > 1)
-    		{
-    			// Check to see if every block has no probability
-    			boolean hasProbability = false;
-    			for (int[] block : getBlocks())
-    			{
-    				if (block[2] > -1)
-    				{
-    					hasProbability = true;
-    				}
-    			}
-    			
-    			// If not, split probabilities equally
-    			if (!hasProbability)
-    			{
-    				int probability = 100 / getBlocks().size();
-    				for (int[] block : getBlocks())
-    				{
-    					block[2] = probability;
-    				}
-    			}
-    		}
+    		if (getBlocks().size() == 0) throw new EmptyCoordinateException(line);
     		
     		/**
     		 * Branch direction and probability
@@ -165,19 +130,19 @@ public class Coordinate {
     	 * Legacy support during refactor
     	 * TODO Get rid of this
     	 */
-    	int[] firstBlock = getBlocks().get(0);
+    	int[] firstBlock = getBlocks().firstBlock();
 		this.workingData = firstBlock[0];
 		this.workingExtra = firstBlock[1];
 		this.dig = object.dig;
     }
     
-    public Coordinate(CustomObject object, int x, int y, int z, List<int[]> blocks, int branchDirection, int branchOdds)
+    public Coordinate(CustomObject object, int x, int y, int z, WeightedBlockCollection blocks, int branchDirection, int branchOdds)
     {
     	this.object = object;
     	this.x = x;
     	this.y = y;
     	this.z = z;
-    	this.blocks = new ArrayList<int[]>(blocks);
+    	this.blocks = new WeightedBlockCollection(blocks);
     	this.branchDirection = branchDirection;
     	this.branchOdds = branchOdds;
     	
@@ -185,7 +150,7 @@ public class Coordinate {
     	 * Legacy support during refactor
     	 * TODO Get rid of this
     	 */
-    	int[] firstBlock = getBlocks().get(0);
+    	int[] firstBlock = getBlocks().firstBlock();
     	this.workingData = firstBlock[0];
     	this.workingExtra = firstBlock[1];
     	this.dig = object.dig;
@@ -235,7 +200,7 @@ public class Coordinate {
         return (_z + z) >> 4;
     }
 
-    public List<int[]> getBlocks()
+    public WeightedBlockCollection getBlocks()
     {
 		return blocks;
 	}
@@ -252,30 +217,16 @@ public class Coordinate {
     
     /**
      * Return a block ID and block data pair according to this
-     * Coordinate's block probabilities. This method may return
-     * null if no block is selected.
+     * Coordinate's block probabilities.
      * 
      * The int[2] returned contains elements in the following
      * order: [block ID, block data]
      * 
-     * @return an int[2] block ID and block data pair, or null
+     * @return an int[2] block ID and block data pair
      */
     public int[] getBlockIdAndData()
     {
-    	int[] data = null;
-    	
-    	for (int[] block : getBlocks())
-    	{
-    		if (getRandom().nextInt(101) <= block[2])
-    		{
-    			data = new int[2];
-    			data[0] = block[0];
-    			data[1] = block[1];
-    			break;
-    		}
-    	}
-    	
-    	return data;
+    	return getBlocks().next();
     }
 
 	public static int RotateData(int type, int data)

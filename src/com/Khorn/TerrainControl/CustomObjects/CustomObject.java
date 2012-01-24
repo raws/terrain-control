@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Random;
 
+import org.bukkit.Bukkit;
+
 import net.minecraft.server.BiomeBase;
 
 public class CustomObject
@@ -49,6 +51,8 @@ public class CustomObject
 
     public CustomObject(File objectFile)
     {
+    	this.name = objectFile.getName().substring(0, objectFile.getName().length() - 4);
+    	
     	try
         {
     		BufferedReader ObjectProps = new BufferedReader(new FileReader(objectFile));
@@ -234,7 +238,15 @@ public class CustomObject
                 	ObjectProps.close();
                 	throw new MalformedCustomObjectException(objectFile.getName() + " contains a syntax error on line " + line + ": " + e.getLine(), objectFile, e);
                 }
+                catch (EmptyCoordinateException e)
+                {
+                	// If a coordinate's block list ends up empty, warn the user and skip the coordinate
+                	log("Warning: \"" + e.getLine() + "\" defines no probable blocks, and will never be placed");
+                }
             }
+            
+            // If no coordinates end up being added, fail fast
+            if (Data.isEmpty()) throw new EmptyCustomObjectException(this);
 
             if (!dataReached)
             {
@@ -242,8 +254,7 @@ public class CustomObject
                 ObjectProps.close();
                 return;
             }
-
-            this.name = objectFile.getName().substring(0,objectFile.getName().length()-4);
+            
             this.CorrectSettings();
             this.IsValid = true;
 
@@ -325,6 +336,11 @@ public class CustomObject
     public Random getRandom()
     {
     	return random;
+    }
+    
+    private void log(String message)
+    {
+    	Bukkit.getLogger().info("[" + name + "] " + message);
     }
 
 }

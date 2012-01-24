@@ -253,7 +253,7 @@ public class CustomObjectGen
         {
             Coordinate coordinate = coordinates.get(index);
             int[] block = coordinate.getBlockIdAndData();
-            if (block != null && (world.getTypeId(x + coordinate.getX(), y + coordinate.getY(), z + coordinate.getZ()) == 0 || coordinate.shouldDig()))
+            if (world.getTypeId(x + coordinate.getX(), y + coordinate.getY(), z + coordinate.getZ()) == 0 || coordinate.shouldDig())
             {
             	ChangeWorld(world, notify, (x + coordinate.getX()), (y + coordinate.getY()), (z + coordinate.getZ()), block);
             }
