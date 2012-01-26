@@ -170,8 +170,6 @@ public class WorldConfig extends ConfigFile
 
         this.CorrectSettings();
 
-        this.WriteSettingsFile(settingsFile);
-
 
         File BiomeFolder = new File(SettingsDir, TCDefaultValues.WorldBiomeConfigDirectoryName.stringValue());
         if (!BiomeFolder.exists())
