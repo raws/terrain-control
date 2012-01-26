@@ -78,7 +78,6 @@ public class BiomeConfig extends ConfigFile
         this.CorrectSettings();
         if (!settingsFile.exists())
             this.CreateDefaultResources();
-        this.WriteSettingsFile(settingsFile);
 
         BuildReplaceMatrix();
 
